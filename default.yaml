@@ -1,0 +1,18 @@
+workersPerRun: 1
+runtimePerRun: 1m
+runs: 5
+resultsDir: results
+goBin: /Users/roland/golang-src-dev.fuzz/bin/go
+targets:
+  - dir: targets/json
+    name: FuzzUnmarshalJSONEmptySeed
+  - dir: targets/json
+    name: FuzzUnmarshalJSONBasicSeed
+  - dir: targets/zip
+    name: FuzzZIPReaderEmptySeed
+  - dir: targets/tar
+    name: FuzzTarReaderEmptySeed
+  - dir: targets/gzip
+    name: FuzzGZIPReaderEmptySeed
+  - dir: targets/image
+    name: FuzzImageDecodeEmptySeed
