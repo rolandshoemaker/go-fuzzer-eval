@@ -12,17 +12,35 @@ func FuzzTarReaderEmptySeed(f *testing.F) {
 
 	f.Fuzz(func(_ *testing.T, b []byte) {
 		r := tar.NewReader(bytes.NewReader(b))
+		type file struct {
+			header  *tar.Header
+			content []byte
+		}
+		files := []file{}
 		for {
-			_, err := r.Next()
+			hdr, err := r.Next()
 			if err == io.EOF {
-				break // End of archive
+				break
 			}
 			if err != nil {
 				return
 			}
-			if _, err := io.Copy(io.Discard, r); err != nil {
-				return
+			buf := bytes.NewBuffer(nil)
+			if _, err := io.Copy(buf, r); err != nil {
+				return // or continue?
+			}
+			files = append(files, file{header: hdr, content: buf.Bytes()})
+		}
+
+		w := tar.NewWriter(io.Discard)
+		for _, f := range files {
+			if err := w.WriteHeader(f.header); err != nil {
+				continue
+			}
+			if _, err := w.Write(f.content); err != nil {
+				continue
 			}
 		}
+		w.Close()
 	})
 }

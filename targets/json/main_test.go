@@ -5,12 +5,32 @@ import (
 	"testing"
 )
 
+func fuzzUnmarshal(b []byte) {
+	for _, t := range []func() interface{}{
+		func() interface{} { return new(interface{}) },
+		func() interface{} { return new(map[string]interface{}) },
+		func() interface{} { return new([]interface{}) },
+	} {
+		if err := json.Unmarshal(b, t()); err != nil {
+			return
+		}
+
+		encoded, err := json.Marshal(t())
+		if err != nil {
+			return
+		}
+
+		if err := json.Unmarshal(encoded, t()); err != nil {
+			return
+		}
+	}
+}
+
 func FuzzUnmarshalJSONEmptySeed(f *testing.F) {
 	f.Add([]byte{})
 
 	f.Fuzz(func(_ *testing.T, b []byte) {
-		var i interface{}
-		json.Unmarshal(b, &i)
+		fuzzUnmarshal(b)
 	})
 }
 
@@ -32,9 +52,10 @@ func FuzzUnmarshalJSONBasicSeed(f *testing.F) {
 }`))
 
 	f.Fuzz(func(_ *testing.T, b []byte) {
-		var i interface{}
-		json.Unmarshal(b, &i)
+		fuzzUnmarshal(b)
 	})
 }
 
 // TODO: add a target with a saturated corpus
+
+// TODO: add a json.Decoder target
