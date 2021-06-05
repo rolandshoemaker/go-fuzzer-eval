@@ -7,23 +7,24 @@ import (
 	"testing"
 )
 
-func fuzzUnmarshal(b []byte) {
-	for _, t := range []func() interface{}{
+func fuzzUnmarshal(t *testing.T, b []byte) {
+	for _, typ := range []func() interface{}{
 		func() interface{} { return new(interface{}) },
 		func() interface{} { return new(map[string]interface{}) },
 		func() interface{} { return new([]interface{}) },
 	} {
-		if err := json.Unmarshal(b, t()); err != nil {
+		i := typ()
+		if err := json.Unmarshal(b, i); err != nil {
 			return
 		}
 
-		encoded, err := json.Marshal(t())
+		encoded, err := json.Marshal(i)
 		if err != nil {
-			return
+			t.Fatalf("failed to marshal: %s", err)
 		}
 
-		if err := json.Unmarshal(encoded, t()); err != nil {
-			return
+		if err := json.Unmarshal(encoded, i); err != nil {
+			t.Fatalf("failed to roundtrip: %s", err)
 		}
 	}
 }
@@ -31,8 +32,8 @@ func fuzzUnmarshal(b []byte) {
 func FuzzUnmarshalJSONEmptySeed(f *testing.F) {
 	f.Add([]byte{})
 
-	f.Fuzz(func(_ *testing.T, b []byte) {
-		fuzzUnmarshal(b)
+	f.Fuzz(func(t *testing.T, b []byte) {
+		fuzzUnmarshal(t, b)
 	})
 }
 
@@ -53,8 +54,8 @@ func FuzzUnmarshalJSONBasicSeed(f *testing.F) {
     "float": 3e-9"
 }`))
 
-	f.Fuzz(func(_ *testing.T, b []byte) {
-		fuzzUnmarshal(b)
+	f.Fuzz(func(t *testing.T, b []byte) {
+		fuzzUnmarshal(t, b)
 	})
 }
 

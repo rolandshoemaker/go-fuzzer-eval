@@ -10,7 +10,7 @@ import (
 func FuzzGZIPReaderEmptySeed(f *testing.F) {
 	f.Add([]byte{})
 
-	f.Fuzz(func(_ *testing.T, b []byte) {
+	f.Fuzz(func(t *testing.T, b []byte) {
 		for _, multistream := range []bool{true, false} {
 			r, err := gzip.NewReader(bytes.NewBuffer(b))
 			if err != nil {
@@ -33,9 +33,12 @@ func FuzzGZIPReaderEmptySeed(f *testing.F) {
 				if err != nil {
 					continue
 				}
-				w.Write(decompressed.Bytes())
+				_, err = w.Write(decompressed.Bytes())
+				if err != nil {
+					t.Fatalf("failed to re-compress: %s", err)
+				}
 				if err := w.Flush(); err != nil {
-					continue
+					t.Fatalf("failed to re-compress: %s", err)
 				}
 				w.Close()
 			}
