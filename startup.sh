@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+set -ex
 
 function cleanup {
     # Delete the instance
