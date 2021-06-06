@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+set -ex
 
 function run {
     gcloud compute instances create $1 \

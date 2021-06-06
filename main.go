@@ -21,13 +21,14 @@ func run(goBin string, targetName string, targetDir string, runtime time.Duratio
 	}
 	defer os.RemoveAll(tmpDir)
 	cmd := exec.Command(goBin, "test", ".", "-run=XXXXXXXX", "-fuzz="+targetName, "-timeout=0", "-fuzztime="+runtime.String(), "-parallel="+fmt.Sprint(workers), "-test.fuzzcachedir="+tmpDir, "-v") // -keepfuzzing also, but not added yet?
-	cmd.Env = append(cmd.Env, "GODEBUG=fuzzdebug=1")
+	cmd.Env = append(os.Environ(), "GODEBUG=fuzzdebug=1")
 	cmd.Dir = targetDir
 	buf := bytes.NewBuffer(nil)
 	cmd.Stderr = buf
 	cmd.Stdout = buf
 	err = cmd.Run()
 	if err != nil {
+		fmt.Println(buf.String())
 		return "", err
 	}
 	return buf.String(), nil
