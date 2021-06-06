@@ -2,11 +2,11 @@ package main
 
 import (
 	"bytes"
+	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
-	"path/filepath"
 	"runtime"
 	"sync"
 	"time"
@@ -21,13 +21,13 @@ func run(goBin string, targetName string, targetDir string, runtime time.Duratio
 	}
 	defer os.RemoveAll(tmpDir)
 	cmd := exec.Command(goBin, "test", ".", "-run=XXXXXXXX", "-fuzz="+targetName, "-timeout=0", "-fuzztime="+runtime.String(), "-parallel="+fmt.Sprint(workers), "-test.fuzzcachedir="+tmpDir, "-v") // -keepfuzzing also, but not added yet?
+	cmd.Env = append(cmd.Env, "GODEBUG=fuzzdebug=1")
 	cmd.Dir = targetDir
 	buf := bytes.NewBuffer(nil)
 	cmd.Stderr = buf
 	cmd.Stdout = buf
 	err = cmd.Run()
 	if err != nil {
-		fmt.Println(string(buf.Bytes()))
 		return "", err
 	}
 	return buf.String(), nil
@@ -42,21 +42,25 @@ type config struct {
 	WorkersPerRun int           `yaml:"workersPerRun"`
 	RuntimePerRun time.Duration `yaml:"runtimePerRun"`
 	Runs          int           `yaml:"runs"`
-	ResultsDir    string        `yaml:"resultsDir"`
-	GoBin         string        `yaml:"goBin"`
-	Targets       []fuzzTarget  `yaml:"targets"`
+	// ResultsDir    string        `yaml:"resultsDir"`
+	// GoBin         string        `yaml:"goBin"`
+	Targets []fuzzTarget `yaml:"targets"`
 }
 
 func main() {
-	b, err := os.ReadFile(os.Args[1])
+	experimentPath := flag.String("experiment", "", "Path to YAML file describing experiment to run")
+	resultPath := flag.String("result", "", "Path to write results log file to")
+	goPath := flag.String("go", "", "Path to Go binary")
+	flag.Parse()
+
+	b, err := os.ReadFile(*experimentPath)
 	if err != nil {
-		log.Fatalf("failed to read config from %q: %s", os.Args[1], err)
+		log.Fatalf("failed to read config from %q: %s", *experimentPath, err)
 	}
 	var c config
 	if err := yaml.Unmarshal(b, &c); err != nil {
-		log.Fatalf("failed to parse config from %q: %s", os.Args[1], err)
+		log.Fatalf("failed to parse config from %q: %s", *experimentPath, err)
 	}
-	fmt.Println(c)
 
 	// TODO: validate flags / use a configuration file instead
 
@@ -74,32 +78,32 @@ func main() {
 	}
 	log.Printf("expected runtime %s\n", expectedRuntime)
 
-	logMap := make(map[string]*os.File, len(c.Targets))
-	logMapMu := new(sync.Mutex)
+	results, err := os.OpenFile(*resultPath, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
+	if err != nil {
+		log.Fatalf("failed to open results file %q: %s\n", *resultPath, err)
+	}
+	defer results.Close()
+	var resultMu sync.Mutex
 
 	for _, target := range c.Targets {
-		logFile := filepath.Join(c.ResultsDir, target.Name+".log")
-		f, err := os.OpenFile(logFile, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0644)
-		if err != nil {
-			log.Fatalf("failed to open log file %q: %s\n", logFile, err)
-		}
-		defer f.Close()
-		logMap[target.Name] = f
 		for i := 0; i < c.Runs; i++ {
 			runNum := i + 1
 			t := target
 			work <- func() {
 				log.Printf("%s#%s run %d/%d started\n", t.Dir, t.Name, runNum, c.Runs)
 				s := time.Now()
-				l, err := run(c.GoBin, t.Name, t.Dir, c.RuntimePerRun, c.WorkersPerRun, runNum)
+				l, err := run(*goPath, t.Name, t.Dir, c.RuntimePerRun, c.WorkersPerRun, runNum)
 				if err != nil {
 					panic(err)
 				}
-				logMapMu.Lock()
-				logMap[t.Name].Write([]byte(l + "\n"))
-				logMapMu.Unlock()
+				resultMu.Lock()
+				_, err = results.Write([]byte(l + "\n"))
+				if err != nil {
+					log.Fatalf("failed to write results to %q: %s\n", *resultPath, err)
+				}
+				resultMu.Unlock()
 				if took := time.Since(s); took < c.RuntimePerRun {
-					fmt.Printf("dubious runtime, took: %s, expected: %s\n", took, c.RuntimePerRun)
+					log.Printf("dubious runtime, took: %s, expected: %s\n", took, c.RuntimePerRun)
 				}
 				log.Printf("%s#%s run %d/%d finished\n", t.Dir, t.Name, runNum, c.Runs)
 			}
