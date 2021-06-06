@@ -8,12 +8,12 @@ function run {
         --machine-type=n1-standard-1 \
         --scopes cloud-platform,compute-rw \
         --metadata-from-file startup-script=startup.sh \
-        --metadata experiment_location="gs://go-fuzz-bench/$1/experiment.yaml" \
-        --metadata result_location="gs://go-fuzz-bench/$1/$2" \
+        --metadata experiment_location="gs://go-fuzz-eval/$1/experiment.yaml" \
+        --metadata result_location="gs://go-fuzz-eval/$1/$2" \
         --metadata checkout="$3" \
         --zone us-central1 
 
-    echo "started experiment for $3, result will be available at gs://go-fuzz-bench/$1/$2"
+    echo "started experiment for $3, result will be available at gs://go-fuzz-eval/$1/$2"
 }
 
 if [ $# -eq 0 ]; then
@@ -23,8 +23,10 @@ fi
 
 exp_name=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
 
-run "$exp_name" "old.log" "$1"
+gsutil cp $1 "gs://go-fuzz-eval/$exp_name/experiment.yaml"
 
-if [[ ! -z "$2" ]]; then
-    run "$exp_name" "new.log" "$2"
+run "$exp_name" "old" "$2"
+
+if [[ ! -z "$3" ]]; then
+    run "$exp_name" "new" "$3"
 fi
