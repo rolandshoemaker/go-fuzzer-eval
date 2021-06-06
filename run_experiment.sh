@@ -8,6 +8,7 @@ function run {
         --machine-type=n1-standard-1 \
         --scopes cloud-platform,compute-rw \
         --metadata-from-file startup-script=startup.sh \
+        --metadata runner_location="https://github.com/rolandshoemaker/go-fuzzer-eval" \
         --metadata experiment_location="gs://go-fuzz-eval/$1/experiment.yaml" \
         --metadata result_location="gs://go-fuzz-eval/$1/$2" \
         --metadata checkout="$3" \
