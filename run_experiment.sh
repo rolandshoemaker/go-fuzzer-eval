@@ -2,17 +2,14 @@
 set -ex
 
 function run {
-    gcloud compute instances create $1 \
+    gcloud compute instances create "exp-$1-$2" \
         --image-family=debian-10 \
         --image-project=debian-cloud \
-        --machine-type=n1-standard-1 \
+        --machine-type=n1-standard-16 \
         --scopes cloud-platform,compute-rw \
         --metadata-from-file startup-script=startup.sh \
-        --metadata runner_location="https://github.com/rolandshoemaker/go-fuzzer-eval" \
-        --metadata experiment_location="gs://go-fuzz-eval/$1/experiment.yaml" \
-        --metadata result_location="gs://go-fuzz-eval/$1/$2" \
-        --metadata checkout="$3" \
-        --zone us-central1 
+        --metadata runner_location="https://github.com/rolandshoemaker/go-fuzzer-eval",experiment_location="gs://go-fuzz-eval/$1/experiment.yaml",result_location="gs://go-fuzz-eval/$1/$2.log",checkout="$3" \
+        --zone us-central1-a
 
     echo "started experiment for $3, result will be available at gs://go-fuzz-eval/$1/$2"
 }
@@ -22,7 +19,7 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
-exp_name=$(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 8 | head -n 1)
+exp_name=$(openssl rand -hex 4)
 
 gsutil cp $1 "gs://go-fuzz-eval/$exp_name/experiment.yaml"
 

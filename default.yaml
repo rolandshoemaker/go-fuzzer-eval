@@ -1,6 +1,6 @@
 workersPerRun: 1
 runtimePerRun: 1h
-runs: 10
+runs: 5
 targets:
   - dir: targets/dns
     name: FuzzLookupHostEmptySeed
