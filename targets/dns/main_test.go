@@ -26,10 +26,13 @@ func (mc *mockConn) SetWriteDeadline(t time.Time) error { return nil }
 func FuzzLookupHostEmptySeed(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, b []byte) {
 		r := &net.Resolver{
+			PreferGo: true,
 			Dial: func(_ context.Context, network, _ string) (net.Conn, error) {
 				return &mockConn{buf: bytes.NewReader(b)}, nil
 			},
 		}
-		r.LookupHost(context.Background(), "")
+		r.LookupHost(context.Background(), "non-existent.golang.org")
+		r.PreferGo = false
+		r.LookupHost(context.Background(), "non-existent.golang.org")
 	})
 }

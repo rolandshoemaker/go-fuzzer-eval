@@ -2,6 +2,8 @@ package html
 
 import (
 	"bytes"
+	"io"
+	"log"
 	"net"
 	"net/http"
 	"testing"
@@ -33,6 +35,10 @@ func FuzzClientResponseEmptySeed(f *testing.F) {
 			},
 		}
 
+		// Supress output from default logger, since the net/http
+		// package is very loud
+		log.Default().SetOutput(io.Discard)
+
 		for _, method := range []string{
 			http.MethodGet,
 			http.MethodHead,
@@ -44,7 +50,7 @@ func FuzzClientResponseEmptySeed(f *testing.F) {
 			http.MethodOptions,
 			http.MethodTrace,
 		} {
-			req, err := http.NewRequest(method, "", nil)
+			req, err := http.NewRequest(method, "http://non-existent.golang.org", nil)
 			if err != nil {
 				continue
 			}

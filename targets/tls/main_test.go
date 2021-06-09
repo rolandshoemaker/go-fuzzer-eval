@@ -25,14 +25,16 @@ func (mc *mockConn) SetWriteDeadline(t time.Time) error { return nil }
 
 func FuzzTLSClientHandshakeEmptySeed(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, b []byte) {
-		c := tls.Client(&mockConn{buf: bytes.NewReader(b)}, &tls.Config{})
+		c := tls.Client(&mockConn{buf: bytes.NewReader(b)}, &tls.Config{ServerName: "non-existent.golang.org"})
+		c.Handshake()
+		c = tls.Client(&mockConn{buf: bytes.NewReader(b)}, &tls.Config{InsecureSkipVerify: true})
 		c.Handshake()
 	})
 }
 
 func FuzzTLSServerHandshakeEmptySeed(f *testing.F) {
 	f.Fuzz(func(_ *testing.T, b []byte) {
-		c := tls.Server(&mockConn{buf: bytes.NewReader(b)}, &tls.Config{})
-		c.Handshake()
+		s := tls.Server(&mockConn{buf: bytes.NewReader(b)}, &tls.Config{})
+		s.Handshake()
 	})
 }
